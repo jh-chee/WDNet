@@ -1,24 +1,29 @@
 import argparse, os, torch
-#from GAN import GAN
+# from GAN import GAN
 from WDNet import WDNet
-#from LSGAN import LSGAN
-#from DRAGAN import DRAGAN
-#from ACGAN import ACGAN
-#from WGAN import WGAN
-#from WGAN_GP import WGAN_GP
-#from infoGAN import infoGAN
-#from EBGAN import EBGAN
-#from BEGAN import BEGAN
+
+# from LSGAN import LSGAN
+# from DRAGAN import DRAGAN
+# from ACGAN import ACGAN
+# from WGAN import WGAN
+# from WGAN_GP import WGAN_GP
+# from infoGAN import infoGAN
+# from EBGAN import EBGAN
+# from BEGAN import BEGAN
 
 """parsing and configuration"""
+
+
 def parse_args():
     desc = "Pytorch implementation of GAN collections"
     parser = argparse.ArgumentParser(description=desc)
 
     parser.add_argument('--gan_type', type=str, default='CGAN',
-                        choices=['GAN', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN', 'WGAN_GP', 'DRAGAN', 'LSGAN'],
+                        choices=['GAN', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN', 'WGAN_GP', 'DRAGAN',
+                                 'LSGAN'],
                         help='The type of GAN')
-    parser.add_argument('--dataset', type=str, default='mnist', choices=['mnist', 'fashion-mnist', 'cifar10', 'cifar100', 'svhn', 'stl10', 'lsun-bed'],
+    parser.add_argument('--dataset', type=str, default='mnist',
+                        choices=['mnist', 'fashion-mnist', 'cifar10', 'cifar100', 'svhn', 'stl10', 'lsun-bed'],
                         help='The name of dataset')
     parser.add_argument('--split', type=str, default='', help='The split flag for svhn and stl10')
     parser.add_argument('--epoch', type=int, default=50, help='The number of epochs to run')
@@ -37,7 +42,10 @@ def parse_args():
     parser.add_argument('--gpu', type=str, default='0')
     return check_args(parser.parse_args())
 
+
 """checking arguments"""
+
+
 def check_args(args):
     # --save_dir
     if not os.path.exists(args.save_dir):
@@ -65,7 +73,10 @@ def check_args(args):
 
     return args
 
+
 """main"""
+
+
 def main():
     # parse arguments
     args = parse_args()
@@ -74,8 +85,8 @@ def main():
 
     if args.benchmark_mode:
         torch.backends.cudnn.benchmark = True
-    os.environ["CUDA_VISIBLE_DEVICES"] =  args.gpu
-        # declare instance for GAN
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+    # declare instance for GAN
     '''
     if args.gan_type == 'GAN':
         gan = GAN(args)
@@ -108,8 +119,9 @@ def main():
     print(" [*] Training finished!")
 
     # visualize learned generator
-    gan.visualize_results(args.epoch)
+    # gan.visualize_results(args.epoch)
     print(" [*] Testing finished!")
+
 
 if __name__ == '__main__':
     main()
