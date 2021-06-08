@@ -2,4 +2,6 @@
 __pycache__/
 dataset/
 Pretrained_WDNet/
-results/
+results*/
+log*/
+models*/

@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument('--save_dir', type=str, default='models',
                         help='Directory name to save the model')
     parser.add_argument('--result_dir', type=str, default='results', help='Directory name to save the generated images')
-    parser.add_argument('--log_dir', type=str, default='logs', help='Directory name to save training logs')
+    parser.add_argument('--log_dir', type=str, default='log', help='Directory name to save training logs')
     parser.add_argument('--lrG', type=float, default=0.0002)
     parser.add_argument('--lrD', type=float, default=0.0002)
     parser.add_argument('--beta1', type=float, default=0.5)
@@ -115,6 +115,7 @@ def main():
         raise Exception("[!] There is no option for " + args.gan_type)
 
         # launch the graph in a session
+    gan.load()
     gan.train()
     print(" [*] Training finished!")
 

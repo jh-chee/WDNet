@@ -180,6 +180,10 @@ class WDNet(object):
         print('---------- Networks architecture -------------')
         # utils.print_network(self.G)
         # utils.print_network(self.D)
+        # print(self.G)
+        # print(self.D)
+        print(f'G params = {sum(p.numel() for p in self.G.parameters())}')
+        print(f'D params = {sum(p.numel() for p in self.D.parameters())}')
         print('-----------------------------------------------')
 
         # fixed noise & condition
@@ -202,11 +206,7 @@ class WDNet(object):
             self.sample_z_, self.sample_y_ = self.sample_z_.cuda(), self.sample_y_.cuda()
 
     def train(self):
-        self.train_hist = {}
-        self.train_hist['D_loss'] = []
-        self.train_hist['G_loss'] = []
-        self.train_hist['per_epoch_time'] = []
-        self.train_hist['total_time'] = []
+        self.train_hist = {'D_loss': [], 'G_loss': [], 'per_epoch_time': [], 'total_time': []}
 
         # self.y_real_, self.y_fake_ = torch.ones(self.batch_size, 1), torch.zeros(self.batch_size, 1)
         # if self.gpu_mode:
@@ -216,14 +216,15 @@ class WDNet(object):
         print('training start!!')
         start_time = time.time()
         writer = SummaryWriter(log_dir='log/ex_WDNet')
-        lenth = self.data_loader.dataset.__len__()
+        length = self.data_loader.dataset.__len__()
         iter_all = 0
         for epoch in range(self.epoch):
             self.G.train()
             epoch_start_time = time.time()
+            iter_start_time = time.time()
             for iter, (x_, y_, mask, balance, alpha, w) in enumerate(self.data_loader):
-                iter_all += 1  # iter+epoch*(lenth//self.batch_size)
-                if iter == lenth // self.batch_size:
+                iter_all += 1  # iter+epoch*(length//self.batch_size)
+                if iter == length // self.batch_size:
                     break
                 # y_vec_ = torch.zeros((self.batch_size, self.class_num)).scatter_(1, y_.type(torch.LongTensor).unsqueeze(1), 1)
                 # y_fill_ = y_vec_.unsqueeze(2).unsqueeze(3).expand(self.batch_size, self.class_num, self.input_size, self.input_size)
@@ -285,11 +286,11 @@ class WDNet(object):
                     writer.add_scalar('I_watermark2_Loss', I_watermark2_loss, iter_all)
                     writer.add_scalar('vgg_Loss', vgg_loss, iter_all)
                 if ((iter + 1) % 100) == 0:
-                    print("Epoch: [%2d] [%4d/%4d] D_loss: %.8f, G_loss: %.8f" %
-                          (
-                              (epoch + 1), (iter + 1), self.data_loader.dataset.__len__() // self.batch_size,
-                              D_loss.item(),
-                              G_writer))
+                    print(f"Epoch: [{epoch+1}/{self.epoch}] ",
+                          f"[{iter+1}/{self.data_loader.dataset.__len__()//self.batch_size}],",
+                          f"D_loss: {D_loss.item():.8f}, G_loss: {G_writer:.8f},",
+                          f"Time taken: {time.time()-iter_start_time:.2f}s")
+                    iter_start_time = time.time()
             self.save()
         print("Training finish!... save training results")
 
