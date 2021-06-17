@@ -6,7 +6,7 @@ from dataloader import dataloader
 from unet_parts import *
 from tensorboardX import SummaryWriter
 from vgg import Vgg16
-
+from tqdm import tqdm
 
 class generator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
@@ -176,7 +176,8 @@ class WDNet(object):
             self.BCE_loss = nn.BCELoss()
         self.G.apply(weight_init)
         self.D.apply(weight_init)
-        # self.load()
+
+        self.load()
         print('---------- Networks architecture -------------')
         # utils.print_network(self.G)
         # utils.print_network(self.D)
@@ -218,11 +219,14 @@ class WDNet(object):
         writer = SummaryWriter(log_dir='log/ex_WDNet')
         length = self.data_loader.dataset.__len__()
         iter_all = 0
+        D_loss = torch.zeros(1)
+        loop = tqdm(enumerate(self.data_loader), total=len(self.data_loader))
         for epoch in range(self.epoch):
             self.G.train()
             epoch_start_time = time.time()
             iter_start_time = time.time()
-            for iter, (x_, y_, mask, balance, alpha, w) in enumerate(self.data_loader):
+
+            for iter, (x_, y_, mask, balance, alpha, w) in loop:
                 iter_all += 1  # iter+epoch*(length//self.batch_size)
                 if iter == length // self.batch_size:
                     break
@@ -285,23 +289,25 @@ class WDNet(object):
                     writer.add_scalar('I_watermark_Loss', I_watermark_loss, iter_all)
                     writer.add_scalar('I_watermark2_Loss', I_watermark2_loss, iter_all)
                     writer.add_scalar('vgg_Loss', vgg_loss, iter_all)
-                if ((iter + 1) % 100) == 0:
-                    print(f"Epoch: [{epoch+1}/{self.epoch}] ",
-                          f"[{iter+1}/{self.data_loader.dataset.__len__()//self.batch_size}],",
-                          f"D_loss: {D_loss.item():.8f}, G_loss: {G_writer:.8f},",
-                          f"Time taken: {time.time()-iter_start_time:.2f}s")
-                    iter_start_time = time.time()
+                    # print(f"Epoch: [{epoch+1}/{self.epoch}]",
+                    #       f"[{iter+1}/{self.data_loader.dataset.__len__()//self.batch_size}],",
+                    #       f"D_loss: {D_loss.item():.8f}, G_loss: {G_writer:.8f},",
+                    #       f"Time taken: {time.time()-iter_start_time:.2f}s")
+
+                loop.set_description(f"Epoch [{epoch+1}/{self.epoch}]")
+                loop.set_postfix(D_loss = D_loss.item(), G_loss = G_writer.item())
+                iter_start_time = time.time()
+
             self.save()
         print("Training finish!... save training results")
 
         self.save()
 
     def save(self):
-        torch.save(self.G.state_dict(), os.path.join('Pretrained_WDNet', 'WDNet_G.pkl'))
-        torch.save(self.D.state_dict(), os.path.join('Pretrained_WDNet', 'WDNet_D.pkl'))
+        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
+        torch.save(self.G.state_dict(), save_dir)
+        torch.save(self.D.state_dict(), save_dir)
 
     def load(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
-
         self.G.load_state_dict(torch.load(os.path.join('Pretrained_WDNet', 'WDNet_G.pkl')))
         self.D.load_state_dict(torch.load(os.path.join('Pretrained_WDNet', 'WDNet_D.pkl')))

@@ -22,15 +22,12 @@ def parse_args():
                         choices=['GAN', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN', 'WGAN_GP', 'DRAGAN',
                                  'LSGAN'],
                         help='The type of GAN')
-    parser.add_argument('--dataset', type=str, default='mnist',
-                        choices=['mnist', 'fashion-mnist', 'cifar10', 'cifar100', 'svhn', 'stl10', 'lsun-bed'],
-                        help='The name of dataset')
+    parser.add_argument('--dataset', type=str, default='./dataset/passport_dataset/train/', help='root path of dataset')
     parser.add_argument('--split', type=str, default='', help='The split flag for svhn and stl10')
     parser.add_argument('--epoch', type=int, default=50, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
     parser.add_argument('--input_size', type=int, default=28, help='The size of input image')
-    parser.add_argument('--save_dir', type=str, default='models',
-                        help='Directory name to save the model')
+    parser.add_argument('--save_dir', type=str, default='models', help='Directory name to save the model')
     parser.add_argument('--result_dir', type=str, default='results', help='Directory name to save the generated images')
     parser.add_argument('--log_dir', type=str, default='log', help='Directory name to save training logs')
     parser.add_argument('--lrG', type=float, default=0.0002)
@@ -114,8 +111,7 @@ def main():
     else:
         raise Exception("[!] There is no option for " + args.gan_type)
 
-        # launch the graph in a session
-    gan.load()
+    # launch the graph in a session
     gan.train()
     print(" [*] Training finished!")
 

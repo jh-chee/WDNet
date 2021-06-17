@@ -2,14 +2,14 @@ import pytorch_ssim
 from PIL import Image
 import torch
 import math
-from scipy.ndimage import gaussian_filter
+# from scipy.ndimage import gaussian_filter
 import numpy
 from numpy.lib.stride_tricks import as_strided as ast
 import cv2
 import os.path as osp
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 def psnr(img1, img2):
