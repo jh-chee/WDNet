@@ -4,9 +4,10 @@ import torch.nn as nn
 import torch.optim as optim
 from dataloader import dataloader
 from unet_parts import *
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from vgg import Vgg16
 from tqdm import tqdm
+import torchvision
 
 class generator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
@@ -137,13 +138,13 @@ class WDNet(object):
         # parameters
         self.epoch = args.epoch
         self.batch_size = args.batch_size
+        self.load_dir = args.load_dir
         self.save_dir = args.save_dir
         self.result_dir = args.result_dir
         self.dataset = args.dataset
         self.log_dir = args.log_dir
         self.gpu_mode = args.gpu_mode
         self.input_size = args.input_size
-        self.model_name = args.gan_type
         self.z_dim = 62
         self.class_num = 3
         self.sample_num = self.class_num ** 2
@@ -207,7 +208,6 @@ class WDNet(object):
             self.sample_z_, self.sample_y_ = self.sample_z_.cuda(), self.sample_y_.cuda()
 
     def train(self):
-        self.train_hist = {'D_loss': [], 'G_loss': [], 'per_epoch_time': [], 'total_time': []}
 
         # self.y_real_, self.y_fake_ = torch.ones(self.batch_size, 1), torch.zeros(self.batch_size, 1)
         # if self.gpu_mode:
@@ -215,16 +215,15 @@ class WDNet(object):
         vgg = Vgg16().type(torch.cuda.FloatTensor)
         self.D.train()
         print('training start!!')
-        start_time = time.time()
         writer = SummaryWriter(log_dir='log/ex_WDNet')
+        writer_fake = SummaryWriter(f"log/fake")
+        writer_real = SummaryWriter(f"log/real")
         length = self.data_loader.dataset.__len__()
         iter_all = 0
         D_loss = torch.zeros(1)
         loop = tqdm(enumerate(self.data_loader), total=len(self.data_loader))
         for epoch in range(self.epoch):
             self.G.train()
-            epoch_start_time = time.time()
-            iter_start_time = time.time()
 
             for iter, (x_, y_, mask, balance, alpha, w) in loop:
                 iter_all += 1  # iter+epoch*(length//self.batch_size)
@@ -248,7 +247,6 @@ class WDNet(object):
                     D_fake_loss = self.BCE_loss(D_fake, torch.zeros_like(D_fake))
 
                     D_loss = 0.5 * D_real_loss + 0.5 * D_fake_loss
-                    # self.train_hist['D_loss'].append(D_loss.item())
                     D_writer = D_loss.item()
                     D_loss.backward()
                     self.D_optimizer.step()
@@ -264,22 +262,24 @@ class WDNet(object):
                 vgg_loss = 0.0
                 for j in range(3):
                     vgg_loss += self.loss_mse(feature_G[j], feature_real[j])
-                # self.train_hist['G_loss'].append(G_loss.item())
-                mask_loss = self.l1loss(g_mask * balance, mask * balance) * balance.size(0) * balance.size(
-                    1) * balance.size(2) * balance.size(3) / balance.sum()
-                w_loss = self.l1loss(g_w * mask, w * mask) * mask.size(0) * mask.size(1) * mask.size(2) * mask.size(
-                    3) / mask.sum()
-                alpha_loss = self.l1loss(g_alpha * mask, alpha * mask) * mask.size(0) * mask.size(1) * mask.size(
-                    2) * mask.size(3) / mask.sum()
-                I_watermark_loss = self.l1loss(I_watermark * mask, y_ * mask) * mask.size(0) * mask.size(1) * mask.size(
-                    2) * mask.size(3) / mask.sum()
-                I_watermark2_loss = self.l1loss(G_ * mask, y_ * mask) * mask.size(0) * mask.size(1) * mask.size(
-                    2) * mask.size(3) / mask.sum()
+
+                mask_loss = self.l1loss(g_mask * balance, mask * balance) * balance.size(0) * balance.size(1) * \
+                    balance.size(2) * balance.size(3) / balance.sum()
+                w_loss = self.l1loss(g_w * mask, w * mask) * mask.size(0) * mask.size(1) * mask.size(2) * \
+                    mask.size(3) / mask.sum()
+                alpha_loss = self.l1loss(g_alpha * mask, alpha * mask) * mask.size(0) * mask.size(1) * \
+                    mask.size(2) * mask.size(3) / mask.sum()
+                I_watermark_loss = self.l1loss(I_watermark * mask, y_ * mask) * mask.size(0) * mask.size(1) * \
+                    mask.size(2) * mask.size(3) / mask.sum()
+                I_watermark2_loss = self.l1loss(G_ * mask, y_ * mask) * mask.size(0) * mask.size(1) * mask.size(2) * \
+                    mask.size(3) / mask.sum()
+
                 G_writer = G_loss.data
-                G_loss = G_loss + 10.0 * mask_loss + 10.0 * w_loss + 10.0 * alpha_loss + 50.0 * (
-                        0.7 * I_watermark2_loss + 0.3 * I_watermark_loss) + 1e-2 * vgg_loss
+                G_loss += 10.0 * mask_loss + 10.0 * w_loss + 10.0 * alpha_loss + 50.0 * \
+                          (0.7 * I_watermark2_loss + 0.3 * I_watermark_loss) + 1e-2 * vgg_loss
                 G_loss.backward()
                 self.G_optimizer.step()
+
                 if ((iter + 1) % 100) == 0:
                     writer.add_scalar('G_Loss', G_writer, iter_all)
                     writer.add_scalar('D_Loss', D_loss.item(), iter_all)
@@ -289,25 +289,29 @@ class WDNet(object):
                     writer.add_scalar('I_watermark_Loss', I_watermark_loss, iter_all)
                     writer.add_scalar('I_watermark2_Loss', I_watermark2_loss, iter_all)
                     writer.add_scalar('vgg_Loss', vgg_loss, iter_all)
-                    # print(f"Epoch: [{epoch+1}/{self.epoch}]",
-                    #       f"[{iter+1}/{self.data_loader.dataset.__len__()//self.batch_size}],",
-                    #       f"D_loss: {D_loss.item():.8f}, G_loss: {G_writer:.8f},",
-                    #       f"Time taken: {time.time()-iter_start_time:.2f}s")
+
+                    watermark_detect = (w * mask).reshape(-1, 3, 514, 400)
+                    input_image = x_.reshape(-1, 3, 514, 400)
+                    img_grid_fake = torchvision.utils.make_grid(watermark_detect, normalize=True)
+                    img_grid_real = torchvision.utils.make_grid(input_image, normalize=True)
+                    writer_fake.add_image("Mnist Fake Images", img_grid_fake, global_step=iter_all)
+                    writer_real.add_image("Mnist Real Images", img_grid_real, global_step=iter_all)
 
                 loop.set_description(f"Epoch [{epoch+1}/{self.epoch}]")
-                loop.set_postfix(D_loss = D_loss.item(), G_loss = G_writer.item())
-                iter_start_time = time.time()
+                loop.set_postfix(D_loss=D_loss.item(), G_loss=G_writer.item())
 
-            self.save()
-        print("Training finish!... save training results")
+            if (epoch + 1) % 5 == 0:
+                self.save(epoch+1)
+        print("Training finish!... saving training results")
 
-        self.save()
+        self.save(self.epoch)
 
-    def save(self):
-        save_dir = os.path.join(self.save_dir, self.dataset, self.model_name)
-        torch.save(self.G.state_dict(), save_dir)
-        torch.save(self.D.state_dict(), save_dir)
+    def save(self, epoch):
+        save_dir = os.path.join(self.save_dir, "WDNet")
+        torch.save(self.G.state_dict(), os.path.join(save_dir, f'WDNet_G_{epoch}.pth'))
+        torch.save(self.D.state_dict(), os.path.join(save_dir, f'WDNet_D_{epoch}.pth'))
 
     def load(self):
-        self.G.load_state_dict(torch.load(os.path.join('Pretrained_WDNet', 'WDNet_G.pkl')))
-        self.D.load_state_dict(torch.load(os.path.join('Pretrained_WDNet', 'WDNet_D.pkl')))
+        print(f'Loaded models at {self.load_dir}')
+        self.G.load_state_dict(torch.load(os.path.join(self.load_dir, 'WDNet_G.pkl')))
+        self.D.load_state_dict(torch.load(os.path.join(self.load_dir, 'WDNet_D.pkl')))

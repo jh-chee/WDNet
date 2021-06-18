@@ -18,15 +18,12 @@ def parse_args():
     desc = "Pytorch implementation of GAN collections"
     parser = argparse.ArgumentParser(description=desc)
 
-    parser.add_argument('--gan_type', type=str, default='CGAN',
-                        choices=['GAN', 'CGAN', 'infoGAN', 'ACGAN', 'EBGAN', 'BEGAN', 'WGAN', 'WGAN_GP', 'DRAGAN',
-                                 'LSGAN'],
-                        help='The type of GAN')
-    parser.add_argument('--dataset', type=str, default='./dataset/passport_dataset/train/', help='root path of dataset')
+    parser.add_argument('--dataset', type=str, default='dataset/passport_dataset/train/', help='root path of dataset')
     parser.add_argument('--split', type=str, default='', help='The split flag for svhn and stl10')
     parser.add_argument('--epoch', type=int, default=50, help='The number of epochs to run')
-    parser.add_argument('--batch_size', type=int, default=64, help='The size of batch')
+    parser.add_argument('--batch_size', type=int, default=8, help='The size of batch')
     parser.add_argument('--input_size', type=int, default=28, help='The size of input image')
+    parser.add_argument('--load_dir', type=str, default='Pretrained_WDNet', help='Directory name to save the model')
     parser.add_argument('--save_dir', type=str, default='models', help='Directory name to save the model')
     parser.add_argument('--result_dir', type=str, default='results', help='Directory name to save the generated images')
     parser.add_argument('--log_dir', type=str, default='log', help='Directory name to save training logs')
@@ -83,33 +80,8 @@ def main():
     if args.benchmark_mode:
         torch.backends.cudnn.benchmark = True
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    # declare instance for GAN
-    '''
-    if args.gan_type == 'GAN':
-        gan = GAN(args)
-    elif args.gan_type == 'CGAN':
-        gan = CGAN(args)
-    elif args.gan_type == 'ACGAN':
-        gan = ACGAN(args)
-    elif args.gan_type == 'infoGAN':
-        gan = infoGAN(args, SUPERVISED=False)
-    elif args.gan_type == 'EBGAN':
-        gan = EBGAN(args)
-    elif args.gan_type == 'WGAN':
-        gan = WGAN(args)
-    elif args.gan_type == 'WGAN_GP':
-        gan = WGAN_GP(args)
-    elif args.gan_type == 'DRAGAN':
-        gan = DRAGAN(args)
-    elif args.gan_type == 'LSGAN':
-        gan = LSGAN(args)
-    elif args.gan_type == 'BEGAN':
-        gan = BEGAN(args)
-    '''
-    if args.gan_type == 'CGAN':
-        gan = WDNet(args)
-    else:
-        raise Exception("[!] There is no option for " + args.gan_type)
+
+    gan = WDNet(args)
 
     # launch the graph in a session
     gan.train()

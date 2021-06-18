@@ -8,14 +8,20 @@ import os.path as osp
 import os
 import time
 from torchvision import datasets, transforms
+import argparse
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--load_dir', type=str, default='models/WDnet', help='Directory name to save the generated images')
+args = parser.parse_args()
+
 print(torch.cuda.is_available())
 G = generator(3, 3)
 G.eval()
 G.load_state_dict(torch.load(os.path.join('Pretrained_WDNet', 'WDNet_G.pkl'), map_location='cuda:0'))
 G.cuda()
-root = './dataset/CLWD/test'
+root = args.load_dir
 imageJ_path = osp.join(root, 'Watermarked_image', '%s.jpg')
 img_save_path = osp.join('./results', 'result_img', '%s.jpg')
 img_vision_path = osp.join('./results', 'result_vision', '%s.jpg')
