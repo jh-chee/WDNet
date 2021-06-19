@@ -36,12 +36,15 @@ def check_args(args):
     # --save_dir
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
+        os.makedirs(os.path.join(args.save_dir, "WDNet"))
 
     # --result_dir
     if not os.path.exists(args.result_dir):
         os.makedirs(args.result_dir)
+        os.makedirs(os.path.join(args.result_dir, "WDNet", "result_vision"))
+        os.makedirs(os.path.join(args.result_dir, "WDNet", "result_img"))
 
-    # --result_dir
+    # --log_dir
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 

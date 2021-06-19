@@ -13,7 +13,7 @@ import argparse
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--load_model_dir', type=str, default='models/WDnet', help='Directory name for generator model')
+parser.add_argument('--load_model_dir', type=str, default='models/WDNet/WDNet_G_1.pth', help='Directory name for generator model')
 parser.add_argument('--load_test_data', type=str, default='dataset/passport_score', help='Directory name to save generated images')
 args = parser.parse_args()
 
@@ -24,10 +24,10 @@ G.eval()
 G.load_state_dict(torch.load(args.load_model_dir, map_location='cuda:0'))
 G.cuda()
 
-root = args.load_dir
-imageJ_path = osp.join(root, 'Watermarked_image', '%s.jpg')
-img_save_path = osp.join('./results', 'result_img', '%s.jpg')
-img_vision_path = osp.join('./results', 'result_vision', '%s.jpg')
+root = args.load_test_data
+imageJ_path = osp.join(root, 'Watermarked_image', '%s.jpeg')
+img_save_path = osp.join(root, 'results', 'result_img', '%s.jpeg')
+img_vision_path = osp.join(root, 'results', 'result_vision', '%s.jpeg')
 
 # if not os.path.exists(img_save_path):
 #     os.makedirs(img_save_path)
@@ -40,7 +40,7 @@ img_vision_path = osp.join('./results', 'result_vision', '%s.jpg')
 ids = list()
 for file in os.listdir(root + '/Watermarked_image'):
     # if(file[:-4]=='.jpg'):
-    ids.append(file.strip('.jpg'))
+    ids.append(file.strip('.jpeg'))
 
 i = 0
 all_time = 0.0
