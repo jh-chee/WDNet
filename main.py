@@ -12,7 +12,7 @@ def parse_args():
 
     parser.add_argument('--dataset', type=str, default='dataset/passport_dataset/train/', help='root path of dataset')
     parser.add_argument('--split', type=str, default='', help='The split flag for svhn and stl10')
-    parser.add_argument('--epoch', type=int, default=50, help='The number of epochs to run')
+    parser.add_argument('--epoch', type=int, default=20, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=8, help='The size of batch')
     # parser.add_argument('--input_size', type=int, default=28, help='The size of input image')
     parser.add_argument('--load_dir', type=str, default='Pretrained_WDNet', help='Directory name to save the model')

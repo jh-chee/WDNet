@@ -216,7 +216,7 @@ class WDNet(object):
 
         vgg = Vgg16().type(torch.cuda.FloatTensor)
         self.D.train()
-        print('training start!!')
+        print(f'training start {self.epoch} epochs!!')
 
         writer = SummaryWriter(log_dir='log/ex_WDNet')
         writer_detected_mask = SummaryWriter(f"log/detected_mask")
@@ -227,8 +227,8 @@ class WDNet(object):
         iter_all = 0
         D_loss = torch.zeros(1)
 
-        loop = tqdm(enumerate(self.data_loader), total=len(self.data_loader))
         for epoch in range(self.epoch):
+            loop = tqdm(enumerate(self.data_loader), total=len(self.data_loader))
             self.G.train()
 
             for iter, (x_, y_, mask, balance, alpha, w) in loop:
