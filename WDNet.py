@@ -140,6 +140,7 @@ class WDNet(object):
         self.epoch = args.epoch
         self.batch_size = args.batch_size
         self.load_dir = args.load_dir
+        self.load_from_epoch = args.load_from_epoch
         self.save_dir = args.save_dir
         self.result_dir = args.result_dir
         self.dataset = args.dataset
@@ -321,6 +322,6 @@ class WDNet(object):
         torch.save(self.D.state_dict(), os.path.join(save_dir, f'WDNet_D_{epoch}.pth'))
 
     def load(self):
-        print(f'Loaded models at {self.load_dir}')
-        self.G.load_state_dict(torch.load(os.path.join(self.load_dir, 'WDNet_G.pkl')))
-        self.D.load_state_dict(torch.load(os.path.join(self.load_dir, 'WDNet_D.pkl')))
+        print(f'Loaded models at {self.load_dir}, epoch {self.load_from_epoch}')
+        self.G.load_state_dict(torch.load(os.path.join(self.load_dir, f'WDNet_G_{self.load_from_epoch}.pkl')))
+        self.D.load_state_dict(torch.load(os.path.join(self.load_dir, f'WDNet_D_{self.load_from_epoch}.pkl')))
