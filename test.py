@@ -13,14 +13,17 @@ import argparse
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--load_dir', type=str, default='models/WDnet', help='Directory name to save the generated images')
+parser.add_argument('--load_model_dir', type=str, default='models/WDnet', help='Directory name for generator model')
+parser.add_argument('--load_test_data', type=str, default='dataset/passport_score', help='Directory name to save generated images')
 args = parser.parse_args()
 
 print(torch.cuda.is_available())
+
 G = generator(3, 3)
 G.eval()
-G.load_state_dict(torch.load(os.path.join('Pretrained_WDNet', 'WDNet_G.pkl'), map_location='cuda:0'))
+G.load_state_dict(torch.load(args.load_model_dir, map_location='cuda:0'))
 G.cuda()
+
 root = args.load_dir
 imageJ_path = osp.join(root, 'Watermarked_image', '%s.jpg')
 img_save_path = osp.join('./results', 'result_img', '%s.jpg')
@@ -38,8 +41,10 @@ ids = list()
 for file in os.listdir(root + '/Watermarked_image'):
     # if(file[:-4]=='.jpg'):
     ids.append(file.strip('.jpg'))
+
 i = 0
 all_time = 0.0
+
 for img_id in ids:
     i += 1
     transform_norm = transforms.Compose([transforms.ToTensor()])

@@ -9,6 +9,7 @@ from vgg import Vgg16
 from tqdm import tqdm
 import torchvision
 
+
 class generator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : FC1024_BR-FC7x7x128_BR-(64)4dc2s_BR-(1)4dc2s_S
@@ -144,14 +145,14 @@ class WDNet(object):
         self.dataset = args.dataset
         self.log_dir = args.log_dir
         self.gpu_mode = args.gpu_mode
-        self.input_size = args.input_size
-        self.z_dim = 62
-        self.class_num = 3
-        self.sample_num = self.class_num ** 2
+        # self.input_size = args.input_size
+        # self.z_dim = 62
+        # self.class_num = 3
+        # self.sample_num = self.class_num ** 2
 
         # load dataset
-        self.data_loader = dataloader(self.dataset, self.input_size, self.batch_size)
-        data = self.data_loader.__iter__().__next__()[0]
+        self.data_loader = dataloader(self.dataset, self.batch_size)
+        # data = self.data_loader.__iter__().__next__()[0]
 
         def weight_init(m):
             classname = m.__class__.__name__
@@ -188,39 +189,44 @@ class WDNet(object):
         print(f'D params = {sum(p.numel() for p in self.D.parameters())}')
         print('-----------------------------------------------')
 
-        # fixed noise & condition
-        self.sample_z_ = torch.zeros((self.sample_num, self.z_dim))
-        for i in range(self.class_num):
-            self.sample_z_[i * self.class_num] = torch.rand(1, self.z_dim)
-            for j in range(1, self.class_num):
-                self.sample_z_[i * self.class_num + j] = self.sample_z_[i * self.class_num]
-
-        temp = torch.zeros((self.class_num, 1))
-        for i in range(self.class_num):
-            temp[i, 0] = i
-
-        temp_y = torch.zeros((self.sample_num, 1))
-        for i in range(self.class_num):
-            temp_y[i * self.class_num: (i + 1) * self.class_num] = temp
-
-        self.sample_y_ = torch.zeros((self.sample_num, self.class_num)).scatter_(1, temp_y.type(torch.LongTensor), 1)
-        if self.gpu_mode:
-            self.sample_z_, self.sample_y_ = self.sample_z_.cuda(), self.sample_y_.cuda()
+        # # fixed noise & condition
+        # self.sample_z_ = torch.zeros((self.sample_num, self.z_dim))
+        # for i in range(self.class_num):
+        #     self.sample_z_[i * self.class_num] = torch.rand(1, self.z_dim)
+        #     for j in range(1, self.class_num):
+        #         self.sample_z_[i * self.class_num + j] = self.sample_z_[i * self.class_num]
+        #
+        # temp = torch.zeros((self.class_num, 1))
+        # for i in range(self.class_num):
+        #     temp[i, 0] = i
+        #
+        # temp_y = torch.zeros((self.sample_num, 1))
+        # for i in range(self.class_num):
+        #     temp_y[i * self.class_num: (i + 1) * self.class_num] = temp
+        #
+        # self.sample_y_ = torch.zeros((self.sample_num, self.class_num)).scatter_(1, temp_y.type(torch.LongTensor), 1)
+        # if self.gpu_mode:
+        #     self.sample_z_, self.sample_y_ = self.sample_z_.cuda(), self.sample_y_.cuda()
 
     def train(self):
 
         # self.y_real_, self.y_fake_ = torch.ones(self.batch_size, 1), torch.zeros(self.batch_size, 1)
         # if self.gpu_mode:
         # self.y_real_, self.y_fake_ = self.y_real_.cuda(), self.y_fake_.cuda()
+
         vgg = Vgg16().type(torch.cuda.FloatTensor)
         self.D.train()
         print('training start!!')
+
         writer = SummaryWriter(log_dir='log/ex_WDNet')
-        writer_fake = SummaryWriter(f"log/fake")
-        writer_real = SummaryWriter(f"log/real")
+        writer_detected_mask = SummaryWriter(f"log/detected_mask")
+        writer_input_img = SummaryWriter(f"log/input_img")
+        writer_input_mask = SummaryWriter(f"log/input_mask")
+
         length = self.data_loader.dataset.__len__()
         iter_all = 0
         D_loss = torch.zeros(1)
+
         loop = tqdm(enumerate(self.data_loader), total=len(self.data_loader))
         for epoch in range(self.epoch):
             self.G.train()
@@ -276,7 +282,7 @@ class WDNet(object):
 
                 G_writer = G_loss.data
                 G_loss += 10.0 * mask_loss + 10.0 * w_loss + 10.0 * alpha_loss + 50.0 * \
-                          (0.7 * I_watermark2_loss + 0.3 * I_watermark_loss) + 1e-2 * vgg_loss
+                    (0.7 * I_watermark2_loss + 0.3 * I_watermark_loss) + 1e-2 * vgg_loss
                 G_loss.backward()
                 self.G_optimizer.step()
 
@@ -292,10 +298,13 @@ class WDNet(object):
 
                     watermark_detect = (w * mask).reshape(-1, 3, 514, 400)
                     input_image = x_.reshape(-1, 3, 514, 400)
-                    img_grid_fake = torchvision.utils.make_grid(watermark_detect, normalize=True)
-                    img_grid_real = torchvision.utils.make_grid(input_image, normalize=True)
-                    writer_fake.add_image("Mnist Fake Images", img_grid_fake, global_step=iter_all)
-                    writer_real.add_image("Mnist Real Images", img_grid_real, global_step=iter_all)
+                    input_mask = mask.reshape(-1, 3, 514, 400)
+                    img_grid_watermark_detect = torchvision.utils.make_grid(watermark_detect, normalize=True)
+                    img_grid_input_img = torchvision.utils.make_grid(input_image, normalize=True)
+                    img_grid_input_mask = torchvision.utils.make_grid(input_mask, normalize=True)
+                    writer_detected_mask.add_image("Detected mask", img_grid_watermark_detect, global_step=iter_all)
+                    writer_input_img.add_image("Input img", img_grid_input_img, global_step=iter_all)
+                    writer_input_mask.add_image("Input mask", img_grid_input_mask, global_step=iter_all)
 
                 loop.set_description(f"Epoch [{epoch+1}/{self.epoch}]")
                 loop.set_postfix(D_loss=D_loss.item(), G_loss=G_writer.item())
