@@ -323,5 +323,5 @@ class WDNet(object):
 
     def load(self):
         print(f'Loaded models at {self.load_dir}, epoch {self.load_from_epoch}')
-        self.G.load_state_dict(torch.load(os.path.join(self.load_dir, f'WDNet_G_{self.load_from_epoch}.pkl')))
-        self.D.load_state_dict(torch.load(os.path.join(self.load_dir, f'WDNet_D_{self.load_from_epoch}.pkl')))
+        self.G.load_state_dict(torch.load(os.path.join(self.load_dir, f'WDNet_G_{self.load_from_epoch}.pth')))
+        self.D.load_state_dict(torch.load(os.path.join(self.load_dir, f'WDNet_D_{self.load_from_epoch}.pth')))
