@@ -301,7 +301,7 @@ class WDNet(object):
                     writer.add_scalar('I_watermark2_Loss', I_watermark2_loss, iter_all)
                     writer.add_scalar('vgg_Loss', vgg_loss, iter_all)
 
-                    watermark_detect = (w * mask).reshape(-1, 3, 256, 200)
+                    watermark_detect = (g_w * g_mask).reshape(-1, 3, 256, 200)
                     input_image = x_.reshape(-1, 3, 256, 200)
                     input_mask = mask.reshape(-1, 3, 256, 200)
                     img_grid_watermark_detect = torchvision.utils.make_grid(watermark_detect, normalize=True)
@@ -321,11 +321,12 @@ class WDNet(object):
         self.save(self.epoch)
 
     def save(self, epoch):
+        print(f'[INFO] Saved models at {self.load_dir}, epoch {epoch}')
         save_dir = os.path.join(self.save_dir, "WDNet")
         torch.save(self.G.state_dict(), os.path.join(save_dir, f'WDNet_G_{epoch}.pth'))
         torch.save(self.D.state_dict(), os.path.join(save_dir, f'WDNet_D_{epoch}.pth'))
 
     def load(self):
-        print(f'Loaded models at {self.load_dir}, epoch {self.load_from_epoch}')
+        print(f'[INFO] Loaded models at {self.load_dir}, epoch {self.load_from_epoch}')
         self.G.load_state_dict(torch.load(os.path.join(self.load_dir, f'WDNet_G_{self.load_from_epoch}.pth')))
         self.D.load_state_dict(torch.load(os.path.join(self.load_dir, f'WDNet_D_{self.load_from_epoch}.pth')))
