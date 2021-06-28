@@ -2,7 +2,8 @@ import torch, time, os, pickle
 import numpy as np
 import torch.nn as nn
 import torch.optim as optim
-from dataloader import dataloader
+from torch.utils.data import DataLoader
+from get_data import Getdata
 from unet_parts import *
 from torch.utils.tensorboard import SummaryWriter
 from vgg import Vgg16
@@ -152,8 +153,11 @@ class WDNet(object):
         # self.sample_num = self.class_num ** 2
 
         # load dataset
-        self.data_loader = dataloader(self.dataset, self.batch_size)
-        # data = self.data_loader.__iter__().__next__()[0]
+        self.data_loader = DataLoader(Getdata(self.dataset),
+                                      batch_size=self.batch_size,
+                                      shuffle=True,
+                                      num_workers=8,
+                                      pin_memory=True)
 
         def weight_init(m):
             classname = m.__class__.__name__
