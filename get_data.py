@@ -10,7 +10,9 @@ from torchvision import datasets, transforms
 
 class Getdata(torch.utils.data.Dataset):
     def __init__(self, root):
-        self.transform_norm = transforms.Compose([transforms.ToTensor()])
+        self.transform_norm = transforms.Compose([
+            transforms.Resize((256, 200)),
+            transforms.ToTensor()])
         self.transform_tensor = transforms.ToTensor()
         self.imageJ_path = osp.join(root, 'Watermarked_image', '%s.jpg')
         self.imageI_path = osp.join(root, 'Watermark_free_image', '%s.jpg')
@@ -44,7 +46,39 @@ class Getdata(torch.utils.data.Dataset):
         img_source = self.transform_norm(img_J)
         image_target = self.transform_norm(img_I)
         w = self.transform_norm(w)
-        alpha = self.transform_tensor(alpha)
-        mask = self.transform_tensor(mask)
-        balance = self.transform_tensor(balance)
+        alpha = self.transform_norm(alpha)
+        mask = self.transform_norm(mask)
+        balance = self.transform_norm(balance)
         return img_source, image_target, mask, balance, alpha, w
+
+if __name__ == '__main__':
+    import time
+    import matplotlib.pyplot as plt
+
+    ds = Getdata('dataset/train')
+
+    def get(i):
+        past = time.time()
+        img_J, img_I, mask, balance, alpha, w = ds[i]
+        now = time.time()
+        print(now - past)
+        img_J, img_I, mask, balance, alpha, w = img_J.cpu(), img_I.cpu(), mask.cpu(), balance.cpu(), alpha.cpu(), w.cpu()
+        img_J, img_I, mask, balance, alpha, w = img_J.permute(1, 2, 0), img_I.permute(1, 2, 0), mask.permute(1, 2, 0), \
+            balance.permute(1, 2, 0), alpha.permute(1, 2, 0), w.permute(1, 2, 0)
+
+        # print(img_J.shape, img_I.shape, mask.shape, balance.shape, alpha.shape, w.shape)
+        # print(img_J)
+        f, ax = plt.subplots(2, 3)
+        ax[0][0].imshow(img_J)
+        ax[0][1].imshow(img_I)
+        ax[0][2].imshow(mask)
+        ax[1][0].imshow(balance)
+        ax[1][1].imshow(alpha)
+        ax[1][2].imshow(w)
+
+        plt.show()
+
+    get(777)
+    get(444)
+    get(1616)
+    get(555)

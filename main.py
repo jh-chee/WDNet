@@ -10,13 +10,13 @@ def parse_args():
     desc = "Pytorch implementation of GAN collections"
     parser = argparse.ArgumentParser(description=desc)
 
-    parser.add_argument('--dataset', type=str, default='dataset/passport_dataset/train/', help='root path of dataset')
+    parser.add_argument('--dataset', type=str, default='dataset/train/', help='root path of dataset')
     parser.add_argument('--split', type=str, default='', help='The split flag for svhn and stl10')
     parser.add_argument('--epoch', type=int, default=20, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=8, help='The size of batch')
     # parser.add_argument('--input_size', type=int, default=28, help='The size of input image')
-    parser.add_argument('--load_dir', type=str, default='models', help='Directory name to save the model')
-    parser.add_argument('--load_from_epoch', type=str, default='1', help='Directory name to save the model')
+    parser.add_argument('--load_dir', type=str, default='models/WDNet', help='Directory name to save the model')
+    parser.add_argument('--load_from_epoch', type=int, default='1', help='Directory name to save the model')
     parser.add_argument('--save_dir', type=str, default='models', help='Directory name to save the model')
     parser.add_argument('--result_dir', type=str, default='results', help='Directory name to save the generated images')
     parser.add_argument('--log_dir', type=str, default='log', help='Directory name to save training logs')
