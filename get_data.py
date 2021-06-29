@@ -59,7 +59,7 @@ class Getdata(torch.utils.data.Dataset):
 
         W = torch.zeros_like(img)
 
-        load_watermark = torch.rand(1) > 0.2
+        load_watermark = torch.rand(1) > 0.5
         if load_watermark:
             logo_id = str(torch.randint(1, self.len_watermarks, (1,)).item())
             logo = Image.open(self.watermark_path % logo_id).convert('RGBA')
@@ -83,13 +83,13 @@ class Getdata(torch.utils.data.Dataset):
         img_J = img  # with watermark
 
         mask = solve_mask(img_J, img_I)
-        mask_saved = torch.cat((mask[:, :, None], mask[:, :, None], mask[:, :, None]), 2) * 256.0
+        mask_saved = torch.cat((mask[:, :, None], mask[:, :, None], mask[:, :, None]), 2)
 
         balance = solve_balance(mask)
-        balance_saved = torch.cat((balance[:, :, None], balance[:, :, None], balance[:, :, None]), 2) * 256.0
+        balance_saved = torch.cat((balance[:, :, None], balance[:, :, None], balance[:, :, None]), 2)
 
         alpha = alpha * mask
-        alpha = torch.cat((alpha[:, :, None], alpha[:, :, None], alpha[:, :, None]), 2) * 256.0
+        alpha = torch.cat((alpha[:, :, None], alpha[:, :, None], alpha[:, :, None]), 2)
 
         mask_saved = mask_saved.permute(2, 0, 1)
         balance_saved = balance_saved.permute(2, 0, 1)
@@ -132,8 +132,8 @@ if __name__ == '__main__':
         img_J, img_I, mask, balance, alpha, w = img_J.cpu(), img_I.cpu(), mask.cpu(), balance.cpu(), alpha.cpu(), w.cpu()
         img_J, img_I, mask, balance, alpha, w = img_J.permute(1, 2, 0), img_I.permute(1, 2, 0), mask.permute(1, 2, 0), \
             balance.permute(1, 2, 0), alpha.permute(1, 2, 0), w.permute(1, 2, 0)
-
-        # print(img_J.shape, img_I.shape, mask.shape, balance.shape, alpha.shape, w.shape)
+        print(torch.max(img_J), torch.max(img_I), torch.max(mask), torch.max(balance), torch.max(alpha), torch.max(w))
+        print(img_J.shape, img_I.shape, mask.shape, balance.shape, alpha.shape, w.shape)
         # print(img_J)
         f, ax = plt.subplots(2, 3)
         ax[0][0].imshow(img_J)
@@ -147,5 +147,5 @@ if __name__ == '__main__':
 
     get(777)
     get(444)
-    get(1616)
-    get(555)
+    get(1919)
+    get(2934)
