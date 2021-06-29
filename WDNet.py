@@ -219,10 +219,11 @@ class WDNet(object):
         self.D.train()
         print(f'training start {self.epoch} epochs!!')
 
+        # writer = SummaryWriter(log_dir='log/ex_WDNet')
+        # writer_detected_mask = SummaryWriter(f"log/detected_mask")
+        # writer_input_img = SummaryWriter(f"log/input_img")
+        # writer_input_mask = SummaryWriter(f"log/input_mask")
         writer = SummaryWriter(log_dir='log/ex_WDNet')
-        writer_detected_mask = SummaryWriter(f"log/detected_mask")
-        writer_input_img = SummaryWriter(f"log/input_img")
-        writer_input_mask = SummaryWriter(f"log/input_mask")
 
         length = self.data_loader.dataset.__len__()
         iter_all = 0
@@ -303,9 +304,9 @@ class WDNet(object):
                     img_grid_watermark_detect = torchvision.utils.make_grid(watermark_detect, normalize=True)
                     img_grid_input_img = torchvision.utils.make_grid(input_image, normalize=True)
                     img_grid_input_mask = torchvision.utils.make_grid(input_mask, normalize=True)
-                    writer_detected_mask.add_image("Output mask", img_grid_watermark_detect, global_step=iter_all)
-                    writer_input_img.add_image("Input img", img_grid_input_img, global_step=iter_all)
-                    writer_input_mask.add_image("Input mask", img_grid_input_mask, global_step=iter_all)
+                    writer.add_image("Output mask", img_grid_watermark_detect, global_step=iter_all)
+                    writer.add_image("Input img", img_grid_input_img, global_step=iter_all)
+                    writer.add_image("Input mask", img_grid_input_mask, global_step=iter_all)
 
                 loop.set_description(f"Epoch [{epoch+1}/{self.epoch}]")
                 loop.set_postfix(D_loss=D_loss.item(), G_loss=G_writer.item())
