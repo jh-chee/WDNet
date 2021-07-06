@@ -9,7 +9,7 @@ from torchvision import datasets, transforms
 
 
 class Getdata(torch.utils.data.Dataset):
-    def __init__(self, root):
+    def __init__(self, photo_path, watermark_path, wallpaper_path):
         self.transform_img_to_tensor = transforms.Compose([
             transforms.Resize((256, 200)),
             transforms.RandomCrop(200),
@@ -23,25 +23,26 @@ class Getdata(torch.utils.data.Dataset):
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.ToTensor()
         ])
-        self.root = root  # contains both photos and watermarks
-        self.photo_path = osp.join(root, 'photos', '%s.jpg')
-        self.watermark_path = osp.join(root, 'watermarks', '%s.png')
-        self.len_watermark = len(os.listdir(os.path.join(root, 'watermarks')))
-        self.wallpaper_path = osp.join(root, 'wallpapers', '%s.png')
-        self.len_wallpaper = len(os.listdir(os.path.join(root, 'wallpapers')))
-        self.transform = transforms
-        self.ids = []
 
-        for file in os.listdir(os.path.join(root, 'photos')):
-            self.ids.append(file.strip('.jpg'))
+        self.photo_path = photo_path
+        self.watermark_path = watermark_path
+        self.wallpaper_path = wallpaper_path
+        self.photo_files = []
+        self.watermark_files = []
+        self.wallpaper_files = []
+        self.photo_files = sorted(os.listdir(self.photo_path))
+        self.watermark_files = sorted(os.listdir(self.watermark_path))
+        self.wallpaper_files = sorted(os.listdir(self.wallpaper_path))
+        self.len_watermark = len(self.watermark_files)
+        self.len_wallpaper = len(self.wallpaper_files)
 
     def __getitem__(self, index):
-        img_id = self.ids[index]
+        img_id = self.photo_files[index]
         img_J, img_I, mask, balance, alpha, w = self.generate_mask(img_id)
         return img_J, img_I, mask, balance, alpha, w
 
     def __len__(self):
-        return len(self.ids)
+        return len(self.photo_files)
 
     def generate_mask(self, img_id):
         """
@@ -49,7 +50,7 @@ class Getdata(torch.utils.data.Dataset):
         based on input photo, with a probability of 0.8 to load a random watermark
         """
 
-        img = Image.open(self.photo_path % img_id)
+        img = Image.open(osp.join(self.photo_path, img_id))
         img = self.transform_img_to_tensor(img)
         img_height, img_width = img.shape[2], img.shape[1]  # 200, 200
         img_I = img.clone()  # watermark free
@@ -59,8 +60,8 @@ class Getdata(torch.utils.data.Dataset):
 
         load_watermark = torch.rand(1) > 0.5
         if load_watermark:
-            logo_id = str(torch.randint(1, self.len_watermark, (1,)).item())
-            logo = Image.open(self.watermark_path % logo_id).convert('RGBA')
+            logo_id = self.watermark_files[torch.randint(1, self.len_watermark, (1,)).item()]
+            logo = Image.open(osp.join(self.watermark_path, logo_id)).convert('RGBA')
             rotate_angle = torch.randint(0, 360, (1,))
             logo_height = torch.randint(10, img_height, (1,))
             logo_width = torch.randint(10, img_width, (1,))
@@ -79,8 +80,8 @@ class Getdata(torch.utils.data.Dataset):
 
         load_wallpaper = torch.rand(1) > 0.8
         if load_wallpaper:
-            wallpaper_id = str(torch.randint(1, self.len_wallpaper, (1,)).item())
-            wallpaper = Image.open(self.wallpaper_path % wallpaper_id).convert('RGBA') # takeout 8, 10, 12
+            wallpaper_id = self.wallpaper_files[torch.randint(1, self.len_wallpaper, (1,)).item()]
+            wallpaper = Image.open(osp.join(self.wallpaper_path, wallpaper_id)).convert('RGBA')
 
             wallpaper_resize = wallpaper.resize((img_height, img_width))
             wallpaper = self.transform_logo_to_tensor(wallpaper_resize)
@@ -132,7 +133,10 @@ if __name__ == '__main__':
     import time
     import matplotlib.pyplot as plt
 
-    ds = Getdata('dataset')
+    photo_path = 'dataset/photos'
+    watermark_path = 'dataset/watermarks'
+    wallpaper_path = 'dataset/wallpapers'
+    ds = Getdata(photo_path, watermark_path, wallpaper_path)
 
     def get(i):
         past = time.time()

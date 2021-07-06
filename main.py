@@ -10,15 +10,15 @@ def parse_args():
     desc = "Pytorch implementation of GAN collections"
     parser = argparse.ArgumentParser(description=desc)
 
-    # point to fodler where passport_copy and watermark exist
-    parser.add_argument('--dataset', type=str, default='dataset/', help='root path of dataset')
-    parser.add_argument('--split', type=str, default='', help='The split flag for svhn and stl10')
+    parser.add_argument('--photo_path', type=str, default='dataset/photos', help='path to photos')
+    parser.add_argument('--watermark_path', type=str, default='dataset/watermarks', help='path to watermark')
+    parser.add_argument('--wallpaper_path', type=str, default='dataset/wallpapers', help='path to wallpaper')
     parser.add_argument('--epoch', type=int, default=20, help='The number of epochs to run')
     parser.add_argument('--batch_size', type=int, default=16, help='The size of batch')
     # parser.add_argument('--input_size', type=int, default=28, help='The size of input image')
-    parser.add_argument('--load_dir', type=str, default='models/WDNet', help='Directory name to save the model')
-    parser.add_argument('--load_from_epoch', type=int, default=1, help='Directory name to save the model')
-    parser.add_argument('--save_dir', type=str, default='models', help='Directory name to save the model')
+    parser.add_argument('--load_G_dir', type=str, default='models/WDNet_G_1.pth', help='Path to save the generator')
+    parser.add_argument('--load_D_dir', type=str, default='models/WDNet_D_1.pth', help='Path to save the discriminator')
+    parser.add_argument('--save_dir', type=str, default='models', help='Directory name to save both model')
     parser.add_argument('--result_dir', type=str, default='results', help='Directory name to save the generated images')
     parser.add_argument('--log_dir', type=str, default='log', help='Directory name to save training logs')
     parser.add_argument('--lrG', type=float, default=0.0002)
