@@ -296,9 +296,9 @@ class WDNet(object):
                     writer.add_scalar('I_watermark2_Loss', I_watermark2_loss, iter_all)
                     writer.add_scalar('vgg_Loss', vgg_loss, iter_all)
 
-                    watermark_detect = (g_w * g_mask).reshape(-1, 3, 200, 200).to(dtype=torch.uint8) * 256
-                    input_image = x_.reshape(-1, 3, 200, 200).to(dtype=torch.uint8) * 256
-                    input_mask = mask.reshape(-1, 3, 200, 200).to(dtype=torch.uint8) * 256
+                    watermark_detect = (g_w * g_mask).reshape(-1, 3, 200, 200) * 256
+                    input_image = x_.reshape(-1, 3, 200, 200) * 256
+                    input_mask = mask.reshape(-1, 3, 200, 200) * 256
                     img_grid_watermark_detect = torchvision.utils.make_grid(watermark_detect, normalize=True)
                     img_grid_input_img = torchvision.utils.make_grid(input_image, normalize=True)
                     img_grid_input_mask = torchvision.utils.make_grid(input_mask, normalize=True)
