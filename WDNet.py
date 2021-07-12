@@ -246,7 +246,8 @@ class WDNet(object):
                     self.D_optimizer.zero_grad()
 
                     D_real = self.D(x_, y_)
-                    D_real_loss = self.BCE_loss(D_real, torch.ones_like(D_real))
+                    # one sided label smoothing
+                    D_real_loss = self.BCE_loss(D_real, torch.ones_like(D_real) * 0.9)
 
                     G_, g_mask, g_alpha, g_w, I_watermark = self.G(x_)
                     D_fake = self.D(x_, G_)

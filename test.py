@@ -15,7 +15,7 @@ from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--load_model', type=str, default='models/WDNet_G_1.pth', help='Path to generator model')
-parser.add_argument('--load_data', type=str, default='dataset/passport_score', help='Path to load images')
+parser.add_argument('--load_data', type=str, default='dataset/score_passport', help='Path to load images')
 parser.add_argument('--result_dir', type=str, default='results', help='Path to save generated images')
 args = parser.parse_args()
 
