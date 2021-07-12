@@ -13,4 +13,3 @@ WORKDIR /app
 COPY ./requirements.txt /app/requirements.txt
 RUN python3 -m pip install --upgrade pip
 RUN python3 -m pip install -r requirements.txt
-RUN python3 -m pip install torch==1.8 torchvision==0.9 -f https://download.pytorch.org/whl/cu101/torch_stable.html
