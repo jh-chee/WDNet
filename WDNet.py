@@ -9,7 +9,8 @@ from torch.utils.tensorboard import SummaryWriter
 from vgg import Vgg16
 from tqdm import tqdm
 import torchvision
-
+from psnr_and_ssim import psnr, mse
+import pytorch_ssim
 
 class generator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
@@ -230,6 +231,10 @@ class WDNet(object):
         for epoch in range(self.epoch):
             loop = tqdm(enumerate(self.data_loader), total=len(self.data_loader))
             self.G.train()
+            ans_ssim = 0.0
+            ans_psnr = 0.0
+            rmse_all = 0.0
+            rmse_in = 0.0
 
             for iter, (x_, y_, mask, balance, alpha, w) in loop:
                 iter_all += 1  # iter+epoch*(length//self.batch_size)
@@ -260,9 +265,10 @@ class WDNet(object):
 
                 # update G network
                 self.G_optimizer.zero_grad()
-
                 G_, g_mask, g_alpha, g_w, I_watermark = self.G(x_)
                 D_fake = self.D(x_, G_)
+
+                # calculate loss
                 G_loss = self.BCE_loss(D_fake, torch.ones_like(D_fake))
                 feature_G = vgg(G_)
                 feature_real = vgg(y_)
@@ -270,20 +276,29 @@ class WDNet(object):
                 for j in range(3):
                     vgg_loss += self.loss_mse(feature_G[j], feature_real[j])
 
-                mask_loss = self.l1loss(g_mask * balance, mask * balance) * balance.size(0) * balance.size(1) * \
-                    balance.size(2) * balance.size(3) / balance.sum()
-                w_loss = self.l1loss(g_w * mask, w * mask) * mask.size(0) * mask.size(1) * mask.size(2) * \
-                    mask.size(3) / mask.sum()
-                alpha_loss = self.l1loss(g_alpha * mask, alpha * mask) * mask.size(0) * mask.size(1) * \
-                    mask.size(2) * mask.size(3) / mask.sum()
-                I_watermark_loss = self.l1loss(I_watermark * mask, y_ * mask) * mask.size(0) * mask.size(1) * \
-                    mask.size(2) * mask.size(3) / mask.sum()
-                I_watermark2_loss = self.l1loss(G_ * mask, y_ * mask) * mask.size(0) * mask.size(1) * mask.size(2) * \
-                    mask.size(3) / mask.sum()
+                mask_loss = self.l1loss(g_mask * balance, mask * balance) * balance.numel() / balance.sum()
+                w_loss = self.l1loss(g_w * mask, w * mask) * mask.numel() / mask.sum()
+                alpha_loss = self.l1loss(g_alpha * mask, alpha * mask) * mask.numel() / mask.sum()
+                I_watermark_loss = self.l1loss(I_watermark * mask, y_ * mask) * mask.numel() / mask.sum()
+                I_watermark2_loss = self.l1loss(G_ * mask, y_ * mask) * mask.numel() / mask.sum()
 
                 G_writer = G_loss.data
                 G_loss += 10.0 * mask_loss + 10.0 * w_loss + 10.0 * alpha_loss + 50.0 * \
                     (0.7 * I_watermark2_loss + 0.3 * I_watermark_loss) + 1e-2 * vgg_loss
+
+                # calculate metric
+                ans_psnr += psnr(G_, y_)
+                mse_all = mse(G_, y_)
+                mse_in = mse(G_ * mask, y_ * mask) * mask.numel() / (torch.sum(mask) + 1e-6)
+                rmse_all += torch.sqrt(mse_all)
+                rmse_in += torch.sqrt(mse_in)
+                ans_ssim += pytorch_ssim.ssim(G_, y_)
+
+                tqdm_ssim = ans_ssim.item() / iter_all
+                tqdm_psnr = ans_psnr.item() / iter_all
+                tqdm_rmse_all = rmse_all.item() / iter_all
+                tqdm_rmse_in = rmse_in.item() / iter_all
+
                 G_loss.backward()
                 self.G_optimizer.step()
 
@@ -296,6 +311,10 @@ class WDNet(object):
                     writer.add_scalar('I_watermark_Loss', I_watermark_loss, iter_all)
                     writer.add_scalar('I_watermark2_Loss', I_watermark2_loss, iter_all)
                     writer.add_scalar('vgg_Loss', vgg_loss, iter_all)
+                    writer.add_scalar('ssim', tqdm_ssim, iter_all)
+                    writer.add_scalar('psnr', tqdm_psnr, iter_all)
+                    writer.add_scalar('rmse_all', tqdm_rmse_all, iter_all)
+                    writer.add_scalar('rmse_in', tqdm_rmse_in, iter_all)
 
                     watermark_detect = (g_w * g_mask).reshape(-1, 3, 200, 200) * 256
                     input_image = x_.reshape(-1, 3, 200, 200) * 256
@@ -308,7 +327,9 @@ class WDNet(object):
                     writer.add_image("Input mask", img_grid_input_mask, global_step=iter_all)
 
                 loop.set_description(f"Epoch [{epoch+1}/{self.epoch}]")
-                loop.set_postfix(D_loss=D_loss.item(), G_loss=G_writer.item())
+                # loop.set_postfix(D_loss=D_loss.item(), G_loss=G_writer.item())
+                loop.set_postfix(D_loss=D_loss.item(), G_loss=G_writer.item(), ssim=tqdm_ssim,
+                                 psnr=tqdm_psnr, rmse_all=tqdm_rmse_all, rmse_in=tqdm_rmse_in)
 
             if (epoch + 1) % 5 == 0:
                 self.save(epoch+1)
