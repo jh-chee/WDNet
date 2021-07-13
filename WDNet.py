@@ -138,22 +138,22 @@ class discriminator(nn.Module):
 class WDNet(object):
     def __init__(self, args):
         # parameters
+        self.photo_path = args.photo_path
+        self.watermark_path = args.watermark_path
+        self.wallpaper_path = args.wallpaper_path
         self.epoch = args.epoch
         self.batch_size = args.batch_size
-        self.load_dir = args.load_dir
-        self.load_from_epoch = args.load_from_epoch
+        self.load_G_dir = args.load_G_dir
+        self.load_D_dir = args.load_D_dir
         self.save_dir = args.save_dir
         self.result_dir = args.result_dir
-        self.dataset = args.dataset
         self.log_dir = args.log_dir
         self.gpu_mode = args.gpu_mode
         # self.input_size = args.input_size
-        # self.z_dim = 62
-        # self.class_num = 3
-        # self.sample_num = self.class_num ** 2
 
         # load dataset
-        self.data_loader = DataLoader(Getdata(self.dataset),
+        dataset = Getdata(self.photo_path, self.watermark_path, self.wallpaper_path)
+        self.data_loader = DataLoader(dataset,
                                       batch_size=self.batch_size,
                                       shuffle=True,
                                       num_workers=8,
@@ -186,8 +186,6 @@ class WDNet(object):
 
         self.load()
         print('---------- Networks architecture -------------')
-        # utils.print_network(self.G)
-        # utils.print_network(self.D)
         # print(self.G)
         # print(self.D)
         print(f'G params = {sum(p.numel() for p in self.G.parameters())}')
@@ -223,7 +221,7 @@ class WDNet(object):
         self.D.train()
         print(f'training start {self.epoch} epochs!!')
 
-        writer = SummaryWriter(log_dir='log/ex_WDNet')
+        writer = SummaryWriter(log_dir='log/')
 
         length = self.data_loader.dataset.__len__()
         iter_all = 0
@@ -248,7 +246,8 @@ class WDNet(object):
                     self.D_optimizer.zero_grad()
 
                     D_real = self.D(x_, y_)
-                    D_real_loss = self.BCE_loss(D_real, torch.ones_like(D_real))
+                    # one sided label smoothing
+                    D_real_loss = self.BCE_loss(D_real, torch.ones_like(D_real) * 0.9)
 
                     G_, g_mask, g_alpha, g_w, I_watermark = self.G(x_)
                     D_fake = self.D(x_, G_)
@@ -298,9 +297,9 @@ class WDNet(object):
                     writer.add_scalar('I_watermark2_Loss', I_watermark2_loss, iter_all)
                     writer.add_scalar('vgg_Loss', vgg_loss, iter_all)
 
-                    watermark_detect = (g_w * g_mask).reshape(-1, 3, 256, 200)
-                    input_image = x_.reshape(-1, 3, 256, 200)
-                    input_mask = mask.reshape(-1, 3, 256, 200)
+                    watermark_detect = (g_w * g_mask).reshape(-1, 3, 200, 200) * 256
+                    input_image = x_.reshape(-1, 3, 200, 200) * 256
+                    input_mask = mask.reshape(-1, 3, 200, 200) * 256
                     img_grid_watermark_detect = torchvision.utils.make_grid(watermark_detect, normalize=True)
                     img_grid_input_img = torchvision.utils.make_grid(input_image, normalize=True)
                     img_grid_input_mask = torchvision.utils.make_grid(input_mask, normalize=True)
@@ -318,12 +317,11 @@ class WDNet(object):
         self.save(self.epoch)
 
     def save(self, epoch):
-        print(f'[INFO] Saved models at {self.load_dir}, epoch {epoch}')
-        save_dir = os.path.join(self.save_dir, "WDNet")
-        torch.save(self.G.state_dict(), os.path.join(save_dir, f'WDNet_G_{epoch}.pth'))
-        torch.save(self.D.state_dict(), os.path.join(save_dir, f'WDNet_D_{epoch}.pth'))
+        print(f'[INFO] Saved models at {self.save_dir}, epoch {epoch}')
+        torch.save(self.G.state_dict(), os.path.join(self.save_dir, f'WDNet_G_{epoch}.pth'))
+        torch.save(self.D.state_dict(), os.path.join(self.save_dir, f'WDNet_D_{epoch}.pth'))
 
     def load(self):
-        print(f'[INFO] Loaded models at {self.load_dir}, epoch {self.load_from_epoch}')
-        self.G.load_state_dict(torch.load(os.path.join(self.load_dir, f'WDNet_G_{self.load_from_epoch}.pth')))
-        self.D.load_state_dict(torch.load(os.path.join(self.load_dir, f'WDNet_D_{self.load_from_epoch}.pth')))
+        print(f'[INFO] Loaded models at {self.load_G_dir} and {self.load_D_dir}')
+        self.G.load_state_dict(torch.load(self.load_G_dir))
+        self.D.load_state_dict(torch.load(self.load_D_dir))
