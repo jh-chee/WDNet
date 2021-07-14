@@ -225,21 +225,21 @@ class WDNet(object):
         writer = SummaryWriter(log_dir='log/')
 
         length = self.data_loader.dataset.__len__()
-        iter_all = 0
+        # counter = 0
         D_loss = torch.zeros(1)
 
         for epoch in range(self.epoch):
-            loop = tqdm(enumerate(self.data_loader), total=len(self.data_loader))
+            loop = tqdm(enumerate(self.data_loader, 1), total=len(self.data_loader))
             self.G.train()
             ans_ssim = 0.0
             ans_psnr = 0.0
             rmse_all = 0.0
             rmse_in = 0.0
 
-            for iter, (x_, y_, mask, balance, alpha, w) in loop:
-                iter_all += 1  # iter+epoch*(length//self.batch_size)
-                if iter == length // self.batch_size:
-                    break
+            for counter, (x_, y_, mask, balance, alpha, w) in loop:
+                # counter += 1  # counter+epoch*(length//self.batch_size)
+                # if counter == length // self.batch_size:
+                #     break
                 # y_vec_ = torch.zeros((self.batch_size, self.class_num)).scatter_(1, y_.type(torch.LongTensor).unsqueeze(1), 1)
                 # y_fill_ = y_vec_.unsqueeze(2).unsqueeze(3).expand(self.batch_size, self.class_num, self.input_size, self.input_size)
                 if self.gpu_mode:
@@ -247,7 +247,7 @@ class WDNet(object):
                     # x_, z_, y_vec_, y_fill_ = x_.cuda(), z_.cuda(), y_vec_.cuda(), y_fill_.cuda()
 
                 # update D network
-                if ((iter + 1) % 3) == 0:
+                if counter % 3 == 0:
                     self.D_optimizer.zero_grad()
 
                     D_real = self.D(x_, y_)
@@ -295,27 +295,27 @@ class WDNet(object):
                     rmse_in += torch.sqrt(mse_in)
                     ans_ssim += pytorch_ssim.ssim(G_, y_)
 
-                    tqdm_ssim = ans_ssim.item() / iter_all
-                    tqdm_psnr = ans_psnr.item() / iter_all
-                    tqdm_rmse_all = rmse_all.item() / iter_all
-                    tqdm_rmse_in = rmse_in.item() / iter_all
+                    tqdm_ssim = ans_ssim.item() / counter
+                    tqdm_psnr = ans_psnr.item() / counter
+                    tqdm_rmse_all = rmse_all.item() / counter
+                    tqdm_rmse_in = rmse_in.item() / counter
 
                 G_loss.backward()
                 self.G_optimizer.step()
 
-                if ((iter + 1) % 100) == 0:
-                    writer.add_scalar('G_Loss', G_writer, iter_all)
-                    writer.add_scalar('D_Loss', D_loss.item(), iter_all)
-                    writer.add_scalar('W_Loss', w_loss, iter_all)
-                    writer.add_scalar('alpha_Loss', alpha_loss, iter_all)
-                    writer.add_scalar('mask_Loss', mask_loss, iter_all)
-                    writer.add_scalar('I_watermark_Loss', I_watermark_loss, iter_all)
-                    writer.add_scalar('I_watermark2_Loss', I_watermark2_loss, iter_all)
-                    writer.add_scalar('vgg_Loss', vgg_loss, iter_all)
-                    writer.add_scalar('ssim', tqdm_ssim, iter_all)
-                    writer.add_scalar('psnr', tqdm_psnr, iter_all)
-                    writer.add_scalar('rmse_all', tqdm_rmse_all, iter_all)
-                    writer.add_scalar('rmse_in', tqdm_rmse_in, iter_all)
+                if counter % 100 == 0:
+                    writer.add_scalar('G_Loss', G_writer, counter)
+                    writer.add_scalar('D_Loss', D_loss.item(), counter)
+                    writer.add_scalar('W_Loss', w_loss, counter)
+                    writer.add_scalar('alpha_Loss', alpha_loss, counter)
+                    writer.add_scalar('mask_Loss', mask_loss, counter)
+                    writer.add_scalar('I_watermark_Loss', I_watermark_loss, counter)
+                    writer.add_scalar('I_watermark2_Loss', I_watermark2_loss, counter)
+                    writer.add_scalar('vgg_Loss', vgg_loss, counter)
+                    writer.add_scalar('ssim', tqdm_ssim, counter)
+                    writer.add_scalar('psnr', tqdm_psnr, counter)
+                    writer.add_scalar('rmse_all', tqdm_rmse_all, counter)
+                    writer.add_scalar('rmse_in', tqdm_rmse_in, counter)
 
                     watermark_detect = (g_w * g_mask).reshape(-1, 3, 200, 200) * 256
                     input_image = x_.reshape(-1, 3, 200, 200) * 256
@@ -340,8 +340,10 @@ class WDNet(object):
                     writer.add_image("debug_gw", img_grid_debug_gw, global_step=iter_all)
                     writer.add_image("debug_gmask", img_grid_debug_gmask, global_step=iter_all)
 
+
                 loop.set_description(f"Epoch [{epoch + 1}/{self.epoch}]")
                 # loop.set_postfix(D_loss=D_loss.item(), G_loss=G_writer.item())
+
                 loop.set_postfix(
                     D_loss=D_loss.item(), G_loss=G_writer.item(),
                     metrics=list(
@@ -349,6 +351,7 @@ class WDNet(object):
                             [tqdm_ssim, tqdm_psnr, tqdm_rmse_all, tqdm_rmse_in])
                     )
                 )
+
 
             if (epoch + 1) % 5 == 0:
                 self.save(epoch+1)
