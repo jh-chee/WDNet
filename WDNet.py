@@ -287,17 +287,18 @@ class WDNet(object):
                     (0.7 * I_watermark2_loss + 0.3 * I_watermark_loss) + 1e-2 * vgg_loss
 
                 # calculate metric
-                ans_psnr += psnr(G_, y_)
-                mse_all = mse(G_, y_)
-                mse_in = mse(G_ * mask, y_ * mask) * mask.numel() / (torch.sum(mask) + 1e-6)
-                rmse_all += torch.sqrt(mse_all)
-                rmse_in += torch.sqrt(mse_in)
-                ans_ssim += pytorch_ssim.ssim(G_, y_)
+                with torch.no_grad():
+                    ans_psnr += psnr(G_, y_)
+                    mse_all = mse(G_, y_)
+                    mse_in = mse(G_ * mask, y_ * mask) * mask.numel() / (torch.sum(mask) + 1e-6)
+                    rmse_all += torch.sqrt(mse_all)
+                    rmse_in += torch.sqrt(mse_in)
+                    ans_ssim += pytorch_ssim.ssim(G_, y_)
 
-                tqdm_ssim = ans_ssim.item() / iter_all
-                tqdm_psnr = ans_psnr.item() / iter_all
-                tqdm_rmse_all = rmse_all.item() / iter_all
-                tqdm_rmse_in = rmse_in.item() / iter_all
+                    tqdm_ssim = ans_ssim.item() / iter_all
+                    tqdm_psnr = ans_psnr.item() / iter_all
+                    tqdm_rmse_all = rmse_all.item() / iter_all
+                    tqdm_rmse_in = rmse_in.item() / iter_all
 
                 G_loss.backward()
                 self.G_optimizer.step()
