@@ -327,23 +327,31 @@ class WDNet(object):
                     img_grid_input_mask = torchvision.utils.make_grid(input_mask, normalize=True)
                     img_grid_output_img = torchvision.utils.make_grid(output_img, normalize=True)
 
-                    writer.add_image("Output mask", img_grid_watermark_detect, global_step=counter)
-                    writer.add_image("Input img", img_grid_input_img, global_step=counter)
-                    writer.add_image("Input mask", img_grid_input_mask, global_step=counter)
-                    writer.add_image("Output img", img_grid_output_img, global_step=counter)
+                    writer.add_image("Output mask", img_grid_watermark_detect, global_step=iter_all)
+                    writer.add_image("Input img", img_grid_input_img, global_step=iter_all)
+                    writer.add_image("Input mask", img_grid_input_mask, global_step=iter_all)
+                    writer.add_image("Output img", img_grid_output_img, global_step=iter_all)
 
                     # debug
-                    debug_gw = g_w.reshape(-1,3,200,200) * 256
-                    debug_gmask = g_mask.reshape(-1, 3, 200, 200) * 256
+                    debug_gw = g_w.reshape(-1, 3, 200, 200) * 256
+                    debug_gmask = g_mask.reshape(-1, 1, 200, 200) * 256
                     img_grid_debug_gw = torchvision.utils.make_grid(debug_gw, normalize=True)
                     img_grid_debug_gmask = torchvision.utils.make_grid(debug_gmask, normalize=True)
-                    writer.add_image("debug_gw", img_grid_debug_gw, global_step=counter)
-                    writer.add_image("debug_gmask", img_grid_debug_gmask, global_step=counter)
+                    writer.add_image("debug_gw", img_grid_debug_gw, global_step=iter_all)
+                    writer.add_image("debug_gmask", img_grid_debug_gmask, global_step=iter_all)
 
-                loop.set_description(f"Epoch [{epoch+1}/{self.epoch}]")
+
+                loop.set_description(f"Epoch [{epoch + 1}/{self.epoch}]")
                 # loop.set_postfix(D_loss=D_loss.item(), G_loss=G_writer.item())
-                loop.set_postfix(D_loss=D_loss.item(), G_loss=G_writer.item(),
-                                 metrics=[tqdm_ssim, tqdm_psnr, tqdm_rmse_all, tqdm_rmse_in])
+
+                loop.set_postfix(
+                    D_loss=D_loss.item(), G_loss=G_writer.item(),
+                    metrics=list(
+                        map((lambda x: round(x, 4)),
+                            [tqdm_ssim, tqdm_psnr, tqdm_rmse_all, tqdm_rmse_in])
+                    )
+                )
+
 
             if (epoch + 1) % 5 == 0:
                 self.save(epoch+1)
