@@ -12,6 +12,7 @@ import torchvision
 from psnr_and_ssim import psnr, mse
 import pytorch_ssim
 
+
 class generator(nn.Module):
     # Network Architecture is exactly same as in infoGAN (https://arxiv.org/abs/1606.03657)
     # Architecture : FC1024_BR-FC7x7x128_BR-(64)4dc2s_BR-(1)4dc2s_S
@@ -284,7 +285,7 @@ class WDNet(object):
 
                 G_writer = G_loss.data
                 G_loss += 10.0 * mask_loss + 10.0 * w_loss + 10.0 * alpha_loss + 50.0 * \
-                    (0.7 * I_watermark2_loss + 0.3 * I_watermark_loss) + 1e-2 * vgg_loss
+                          (0.7 * I_watermark2_loss + 0.3 * I_watermark_loss) + 1e-2 * vgg_loss
 
                 # calculate metric
                 with torch.no_grad():
@@ -340,10 +341,8 @@ class WDNet(object):
                     writer.add_image("debug_gw", img_grid_debug_gw, global_step=iter_all)
                     writer.add_image("debug_gmask", img_grid_debug_gmask, global_step=iter_all)
 
-
                 loop.set_description(f"Epoch [{epoch + 1}/{self.epoch}]")
                 # loop.set_postfix(D_loss=D_loss.item(), G_loss=G_writer.item())
-
                 loop.set_postfix(
                     D_loss=D_loss.item(), G_loss=G_writer.item(),
                     metrics=list(
@@ -352,9 +351,8 @@ class WDNet(object):
                     )
                 )
 
-
             if (epoch + 1) % 5 == 0:
-                self.save(epoch+1)
+                self.save(epoch + 1)
         print("Training finish!... saving training results")
 
         self.save(self.epoch)
