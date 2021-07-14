@@ -238,7 +238,7 @@ class WDNet(object):
             rmse_in = 0.0
 
             for iter, (x_, y_, mask, balance, alpha, w) in loop:
-                # counter += 1  # counter+epoch*(length//self.batch_size)
+                iter_all += 1  # counter+epoch*(length//self.batch_size)
                 # if counter == length // self.batch_size:
                 #     break
                 # y_vec_ = torch.zeros((self.batch_size, self.class_num)).scatter_(1, y_.type(torch.LongTensor).unsqueeze(1), 1)
