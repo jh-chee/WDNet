@@ -13,11 +13,11 @@ import os
 
 
 def psnr(img1, img2):
-    mse = numpy.mean((img1 - img2) ** 2)
+    mse = torch.mean((img1 - img2) ** 2)
     if mse == 0:
         return 100
     PIXEL_MAX = 255.0
-    return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
+    return 20 * torch.log10(PIXEL_MAX / torch.sqrt(mse))
 
 
 """
@@ -26,7 +26,7 @@ Hat tip: http://stackoverflow.com/a/5078155/1828289
 
 
 def mse(img1, img2):
-    mse = numpy.mean((img1 - img2) ** 2)
+    mse = torch.mean((img1 - img2) ** 2)
     return mse
 
 
@@ -41,56 +41,74 @@ def block_view(A, block=(3, 3)):
     return ast(A, shape=shape, strides=strides)
 
 
-def ssim(img1, img2, C1=0.01 ** 2, C2=0.03 ** 2):
-    bimg1 = block_view(img1, (4, 4))
-    bimg2 = block_view(img2, (4, 4))
-    s1 = numpy.sum(bimg1, (-1, -2))
-    s2 = numpy.sum(bimg2, (-1, -2))
-    ss = numpy.sum(bimg1 * bimg1, (-1, -2)) + numpy.sum(bimg2 * bimg2, (-1, -2))
-    s12 = numpy.sum(bimg1 * bimg2, (-1, -2))
+# def ssim(img1, img2, C1=0.01 ** 2, C2=0.03 ** 2):
+#     bimg1 = block_view(img1, (4, 4))
+#     bimg2 = block_view(img2, (4, 4))
+#     s1 = numpy.sum(bimg1, (-1, -2))
+#     s2 = numpy.sum(bimg2, (-1, -2))
+#     ss = numpy.sum(bimg1 * bimg1, (-1, -2)) + numpy.sum(bimg2 * bimg2, (-1, -2))
+#     s12 = numpy.sum(bimg1 * bimg2, (-1, -2))
+#
+#     vari = ss - s1 * s1 - s2 * s2
+#     covar = s12 - s1 * s2
+#
+#     ssim_map = (2 * s1 * s2 + C1) * (2 * covar + C2) / ((s1 * s1 + s2 * s2 + C1) * (vari + C2))
+#     return numpy.mean(ssim_map)
 
-    vari = ss - s1 * s1 - s2 * s2
-    covar = s12 - s1 * s2
 
-    ssim_map = (2 * s1 * s2 + C1) * (2 * covar + C2) / ((s1 * s1 + s2 * s2 + C1) * (vari + C2))
-    return numpy.mean(ssim_map)
+if __name__ == '__main__':
+    real_img_root = "./dataset/CLWD/test/Watermark_free_image"
+    mask_img_root = "./dataset/CLWD/test/Mask"
+    g_img_root = './results/result_img'
+    g_img_path = osp.join(g_img_root, '%s.jpg')
+    real_img_path = osp.join(real_img_root, '%s.jpg')
+    mask_path = osp.join(mask_img_root, '%s.png')
+    ids = list()
+    for file in os.listdir(g_img_root):
+        # if(file[:-4]=='.jpg'):
+        ids.append(file.strip('.jpg'))
+    i = 0
+    ans_ssim = 0.0
+    ans_psnr = 0.0
+    rmse_all = 0.0
+    rmse_in = 0.0
+    for img_id in ids:
+        i += 1
+        mask = Image.open(mask_path % img_id)
+        mask = numpy.asarray(mask) / 255.0
+        # print(mask.shape)
+        real_img = cv2.imread(real_img_path % img_id).astype(float)
+        # print(real_img.shape)
+        g_img = cv2.imread(g_img_path % img_id).astype(float)
+        real_img_tensor = torch.from_numpy(real_img).float().unsqueeze(0) / 255.0
+        g_img_tensor = torch.from_numpy(g_img).float().unsqueeze(0) / 255.0
+
+        real_img = torch.from_numpy(real_img).to(torch.float).unsqueeze(0)
+        g_img = torch.from_numpy(g_img).to(torch.float).unsqueeze(0)
+        mask = torch.from_numpy(mask).to(torch.float).unsqueeze(0)
+
+        # float64 uint8 uint8 torch.float32 torch.float32
+        print(mask.dtype, real_img.dtype, real_img.dtype, real_img_tensor.dtype, g_img_tensor.dtype)
+
+        real_img_tensor = real_img_tensor.cuda()
+        g_img_tensor = g_img_tensor.cuda()
+
+        ans_psnr += psnr(g_img, real_img)
+        mse_all = mse(g_img, real_img)
+        mse_in = mse(g_img * mask, real_img * mask) * mask.numel() / (torch.sum(mask) + 1e-6)
+
+        # print(mask.shape[-3] * mask.shape[-2] * mask.shape[-1], mask.numel())
+        rmse_all += torch.sqrt(mse_all)
+        rmse_in += torch.sqrt(mse_in)
+        ans_ssim += pytorch_ssim.ssim(g_img_tensor, real_img_tensor)
+        print(i)
+        print('psnr: %.4f, ssim: %.4f, rmse_in: %.4f, rmse_all: %.4f' % (
+            ans_psnr / i, ans_ssim / i, rmse_in / i, rmse_all / i))
 
 
-real_img_root = "./dataset/CLWD/test/Watermark_free_image"
-mask_img_root = "./dataset/CLWD/test/Mask"
-g_img_root = './results/result_img'
-g_img_path = osp.join(g_img_root, '%s.jpg')
-real_img_path = osp.join(real_img_root, '%s.jpg')
-mask_path = osp.join(mask_img_root, '%s.png')
-ids = list()
-for file in os.listdir(g_img_root):
-    # if(file[:-4]=='.jpg'):
-    ids.append(file.strip('.jpg'))
-i = 0
-ans_ssim = 0.0
-ans_psnr = 0.0
-rmse_all = 0.0
-rmse_in = 0.0
-for img_id in ids:
-    i += 1
-    mask = Image.open(mask_path % img_id)
-    mask = numpy.asarray(mask) / 255.0
-    # print(mask.shape)
-    real_img = cv2.imread(real_img_path % img_id)
-    # print(real_img.shape)
-    g_img = cv2.imread(g_img_path % img_id)
-    real_img_tensor = torch.from_numpy(real_img).float().unsqueeze(0) / 255.0
-    g_img_tensor = torch.from_numpy(g_img).float().unsqueeze(0) / 255.0
-    real_img_tensor = real_img_tensor.cuda()
-    g_img_tensor = g_img_tensor.cuda()
-
-    ans_psnr += psnr(g_img, real_img)
-    mse_all = mse(g_img, real_img)
-    mse_in = mse(g_img * mask, real_img * mask) * mask.shape[0] * mask.shape[1] * mask.shape[2] / (
-            numpy.sum(mask) + 1e-6)
-    rmse_all += numpy.sqrt(mse_all)
-    rmse_in += numpy.sqrt(mse_in)
-    ans_ssim += pytorch_ssim.ssim(g_img_tensor, real_img_tensor)
-    print(i)
-    print('psnr: %.4f, ssim: %.4f, rmse_in: %.4f, rmse_all: %.4f' % (
-        ans_psnr / i, ans_ssim / i, rmse_in / i, rmse_all / i))
+"""after conversion to float"""
+# psnr: 32.8057, ssim: 0.9929, rmse_in: 18.4671, rmse_all: 6.4174
+"""before conversion to float"""
+# psnr: 38.1596, ssim: 0.9929, rmse_in: 18.4671, rmse_all: 3.2577
+"""author's result"""
+# psnr: 40.19, ssim: 0.9931, rmse_in: 17.49, rmse_all 2.66
