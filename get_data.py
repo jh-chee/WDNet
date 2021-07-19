@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageDraw
 import numpy as np
 import cv2
 import os.path as osp
@@ -6,6 +6,7 @@ import os
 import sys
 import torch
 from torchvision import datasets, transforms
+import string
 
 
 class Getdata(torch.utils.data.Dataset):
@@ -58,7 +59,7 @@ class Getdata(torch.utils.data.Dataset):
         alpha = torch.rand(1) * 0.4 + 0.5
         W = torch.zeros_like(img)
 
-        load_watermark = torch.rand(1) > 0.5
+        load_watermark = torch.rand(1) < 0.3
         if load_watermark:
             logo_id = self.watermark_files[torch.randint(1, self.len_watermark, (1,)).item()]
             logo = Image.open(osp.join(self.watermark_path, logo_id)).convert('RGBA')
@@ -72,13 +73,12 @@ class Getdata(torch.utils.data.Dataset):
             start_height = torch.randint(0, img_height - logo_height.item(), (1,))
             start_width = torch.randint(0, img_width - logo_width.item(), (1,))
 
-            # TODO: fix image plant issue for logo 177, 246
             img[:, start_width:start_width + logo_width, start_height:start_height + logo_height] *= \
                 (1.0 - alpha * logo[3:4, :, :]) + logo[:3, :, :] * alpha * logo[3:4, :, :]
 
             W[:, start_width:start_width + logo_width, start_height:start_height + logo_height] += logo[:3, :, :]
 
-        load_wallpaper = torch.rand(1) > 0.8
+        load_wallpaper = torch.rand(1) < 0.0  # disable for now
         if load_wallpaper:
             wallpaper_id = self.wallpaper_files[torch.randint(1, self.len_wallpaper, (1,)).item()]
             wallpaper = Image.open(osp.join(self.wallpaper_path, wallpaper_id)).convert('RGBA')
@@ -89,14 +89,37 @@ class Getdata(torch.utils.data.Dataset):
             img *= (1.0 - alpha * wallpaper[3:4, :, :]) + wallpaper[:3, :, :] * alpha * wallpaper[3:4, :, :]
 
             W += wallpaper[:3, :, :]  # some values will be > 1
-            W = W/torch.max(W)  # normalise the values to be between 0 and 1
+            W = W / torch.max(W)  # normalise the values to be between 0 and 1
+
+        load_words = torch.rand(1) < 0.3
+        if load_words:
+            img_copy = Image.fromarray(np.array(img.permute(1, 2, 0) * 255).astype(np.uint8))
+            _, width, height = np.array(img).shape
+            canvas = Image.new('RGB', (width, height), (0, 0, 0))
+            d = ImageDraw.Draw(img_copy)
+            d_canvas = ImageDraw.Draw(canvas)
+
+            num_words = torch.randint(1, 10, (1,)).item()
+            string_list = string.digits + string.ascii_letters
+            for i in range(num_words):
+                rand_width = torch.rand(1) * width
+                rand_height = torch.rand(1) * height
+                rand_string = ''.join([string_list[torch.randint(0, len(string_list), (1,)).item()] for x in range(20)])
+                rand_fill = (torch.randint(0, 255, (1,)), torch.randint(0, 255, (1,)), torch.randint(0, 255, (1,)))
+                d.text((rand_width, rand_height), rand_string, fill=rand_fill)
+                d_canvas.text((rand_width, rand_height), rand_string, fill=rand_fill)
+
+            img = (torch.from_numpy(np.array(img_copy)).permute(2, 0, 1) / 255).to(torch.float32)
+            text_img = (torch.from_numpy(np.array(canvas)).permute(2, 0, 1) / 255).to(torch.float32)
+            W += text_img[:3, :, :]
+            W = W / torch.max(W)
 
         img_J = img  # with watermark
 
-        mask = solve_mask(img_J, img_I)
+        mask = self.solve_mask(img_J, img_I)
         mask_saved = torch.cat((mask[:, :, None], mask[:, :, None], mask[:, :, None]), 2)
 
-        balance = solve_balance(mask)
+        balance = self.solve_balance(mask)
         balance_saved = torch.cat((balance[:, :, None], balance[:, :, None], balance[:, :, None]), 2)
 
         alpha = alpha * mask
@@ -107,25 +130,25 @@ class Getdata(torch.utils.data.Dataset):
         alpha = alpha.permute(2, 0, 1)
         return img_J, img_I, mask_saved, balance_saved, alpha, W
 
+    @staticmethod
+    def solve_mask(img, img_target):
+        img3 = torch.abs(img - img_target)
+        mask = img3.sum(0) > (15.0 / 255.0)
+        mask = mask.to(torch.float32)
+        return mask
 
-def solve_mask(img, img_target):
-    img3 = torch.abs(img - img_target)
-    mask = img3.sum(0) > (15.0 / 255.0)
-    mask = mask.to(torch.float32)
-    return mask
+    @staticmethod
+    def solve_balance( mask):
+        height, width = mask.shape
+        k = int(mask.sum())
 
-
-def solve_balance(mask):
-    height, width = mask.shape
-    k = int(mask.sum())
-
-    mask2 = (1.0 - mask) * torch.rand((height, width))
-    mask2 = mask2.flatten()
-    pos = torch.argsort(mask2)
-    balance = torch.zeros(height * width)
-    balance[pos[:min(250 * 250, 4 * k)]] = 1
-    balance = balance.reshape(height, width)
-    return balance
+        mask2 = (1.0 - mask) * torch.rand((height, width))
+        mask2 = mask2.flatten()
+        pos = torch.argsort(mask2)
+        balance = torch.zeros(height * width)
+        balance[pos[:min(250 * 250, 4 * k)]] = 1
+        balance = balance.reshape(height, width)
+        return balance
 
 
 # debugging
